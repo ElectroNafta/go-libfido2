@@ -2,7 +2,7 @@ package libfido2
 
 /*
 #cgo pkg-config: libfido2
-#cgo linux LDFLAGS: -ludev
+#cgo linux LDFLAGS: -lfido2
 #cgo darwin LDFLAGS: -framework IOKit -framework CoreFoundation
 #cgo windows LDFLAGS: -lhid -lsetupapi
 #include <fido.h>
