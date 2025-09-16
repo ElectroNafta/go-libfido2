@@ -200,7 +200,6 @@ const maxDevices = 64
 
 // DeviceLocations lists found devices.
 func DeviceLocations() ([]*DeviceLocation, error) {
-	logger.Debugf("Finding devices...")
 	cMax := C.size_t(maxDevices)
 	info := C.fido_dev_info_new(cMax)
 	var cFound C.size_t = 0
@@ -259,15 +258,12 @@ func SelectDevice(devs []*Device, timeout time.Duration) (*Device, error) {
 
 		dev, err := d.open()
 		if err != nil {
-			logger.Errorf("%v", errors.Wrap(err, fmt.Sprintf("failed open device %s", d.path)))
 			return
 		}
 
 		defer d.close(dev)
 
 		if cErr := C.fido_dev_get_touch_begin(dev); cErr != C.FIDO_OK {
-			msg := fmt.Sprintf("failed to start selection for %s", d.path)
-			logger.Errorf("%v", errors.Wrap(errFromCode(cErr), msg))
 			return
 		}
 
@@ -277,21 +273,17 @@ func SelectDevice(devs []*Device, timeout time.Duration) (*Device, error) {
 			select {
 			case <-tick:
 				if selectedDev.path != "" {
-					logger.Debugf(fmt.Sprintf("stop polling: %s", d.path))
 					C.fido_dev_cancel(dev)
 					return
 				}
 
 				var touched C.int
 				if cErr := C.fido_dev_get_touch_status(dev, &touched, 50); cErr != C.FIDO_OK {
-					msg := fmt.Sprintf("failed to get touch status of %s", d.path)
-					logger.Errorf("%v", errors.Wrap(errFromCode(cErr), msg))
 					C.fido_dev_cancel(dev)
 					return
 				}
 
 				if touched == 1 {
-					logger.Debugf(fmt.Sprintf("device touched: %s", d.path))
 					selectedDev.Lock()
 					if selectedDev.path == "" {
 						selectedDev.path = d.path
@@ -301,7 +293,6 @@ func SelectDevice(devs []*Device, timeout time.Duration) (*Device, error) {
 					return
 				}
 			case <-after:
-				logger.Debugf(fmt.Sprintf("stop polling (timeout reached): %s", d.path))
 				C.fido_dev_cancel(dev)
 				return
 			}
@@ -338,9 +329,7 @@ func (d *Device) close(dev *C.fido_dev_t) {
 	d.dev = nil
 	d.Unlock()
 
-	if cErr := C.fido_dev_close(dev); cErr != C.FIDO_OK {
-		logger.Errorf("%v", errors.Wrap(errFromCode(cErr), "failed to close"))
-	}
+	C.fido_dev_close(dev)
 	C.fido_dev_free(&dev)
 }
 
